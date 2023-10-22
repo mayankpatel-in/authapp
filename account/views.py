@@ -61,6 +61,38 @@ class UserLoginAPIView(APIView):
 
         return Response({'access': access_token, 'refresh': refresh_token}, status=status.HTTP_200_OK)
 
+# Changing Password API view  
+class ChangePasswordAPIView(APIView):
+
+    authentication_classes = [JWTAuthentication] # Check the JWT bearer token
+    permission_classes = [IsAuthenticated] 
+
+    def put(self, request, *args, **kwargs):
+        user = request.user
+        data = request.data
+
+        old_password = data.get('old_password')
+        new_password = data.get('new_password')
+        confirm_new_password = data.get('confirm_new_password')
+
+        # Checking the old password here
+        if not authenticate(username=user.email, password=old_password):
+            return Response({'error': 'Old password is not correct'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Make sure the new password is not empty
+        if not new_password:
+            return Response({'error': 'New password is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Make sure the new password and confirm password match
+        if new_password != confirm_new_password:
+            return Response({'error': 'Passwords do not match'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # set_password also hashes the password that the user will get
+        user.set_password(new_password)
+        user.save()
+
+        return Response({'message': 'Password updated successfully'}, status=status.HTTP_200_OK)
+
 # Create user profile
 class UserProfileCreateAPIView(APIView):
 

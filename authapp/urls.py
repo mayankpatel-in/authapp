@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from account.views import UserRegistrationAPIView, UserLoginAPIView, UserProfileCreateAPIView, UserProfileUpdateAPIView
+from account.views import UserRegistrationAPIView, UserLoginAPIView, UserProfileCreateAPIView, UserProfileUpdateAPIView,ChangePasswordAPIView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -8,4 +8,6 @@ urlpatterns = [
     path('login/', UserLoginAPIView.as_view(), name='login'),
     path('profile/create/', UserProfileCreateAPIView.as_view(), name='create_profile'),
     path('profile/update/', UserProfileUpdateAPIView.as_view(), name='update_profile'),
+    path('change_password/', ChangePasswordAPIView.as_view(), name='change_password'),
+    # path('forgot_password/', ForgotPasswordAPIView.as_view(), name='forgot_password'),
 ]
