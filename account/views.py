@@ -93,6 +93,79 @@ class ChangePasswordAPIView(APIView):
 
         return Response({'message': 'Password updated successfully'}, status=status.HTTP_200_OK)
 
+
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.urls import reverse
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
+
+# Rest password by sending mail to user email
+class ForgotPasswordAPIView(APIView):
+
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        email = data.get('email')
+
+        # Make sure the provided email is valid
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({'error': 'There is no user with this email address'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Generate a one-time use token and send it to the user
+        from_email = "patelmayank.oc@gmail.com"  # You can add your email server email here
+        subject = "Password Reset Requested"
+        protocol = 'https' if request.is_secure() else 'http'
+        domain = request.get_host()
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+
+        # Create absolute url for the frontend to capture and allow users to change password
+        # Make sure to create a URL conf for 'password_reset_confirm'
+        password_reset_url = f"{protocol}://{domain}{reverse('password_reset_confirm', kwargs={'uidb64': uid, 'token': token})}"
+
+        message = f"Hello {user.userprofile.first_name or user.email},\n\n" \
+                  f"Follow this link to reset your password:\n\n{password_reset_url}"
+
+        send_mail(subject, message, from_email, [user.email])
+
+        return Response({'message': 'We have sent you an email to reset your password'}, status=status.HTTP_200_OK)
+
+# Handle password reset token validation and confirmation.
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
+from django.contrib.auth import get_user_model
+
+UserModel = get_user_model()  # Getting user model
+class PasswordResetConfirmView(APIView):
+
+    def post(self, request, uidb64, token):
+        # Decode the uidb64 to an actual uid
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))  
+            user = UserModel.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, UserModel.DoesNotExist):
+            user = None
+
+        # Check if the token is valid
+        if user is not None and default_token_generator.check_token(user, token):
+            # Token is valid, proceed with the password reset
+            new_password = request.data.get('new_password')
+
+            # Make sure the new password field not empty
+            if not new_password:
+                return Response({'error': 'Password cannot be empty.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Set the new password and save here
+            user.set_password(new_password)
+            user.save()
+            return Response({'message': 'Password reset successfully.'}, status=status.HTTP_200_OK)
+        else:
+            # Invalid token error 
+            return Response({'error': 'Invalid token or user ID'}, status=status.HTTP_400_BAD_REQUEST)
+
 # Create user profile
 class UserProfileCreateAPIView(APIView):
 
