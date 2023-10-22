@@ -215,3 +215,27 @@ class UserProfileUpdateAPIView(APIView):
         profile.save()  # Save the updated user profile details
 
         return Response({'message': 'Profile updated successfully'}, status=status.HTTP_200_OK)
+    
+
+# Role based access APIVIEW class
+from .permissions import IsSolutionProvider, IsSolutionSeeker
+class SolutionProviderView(APIView):
+
+    authentication_classes = [JWTAuthentication] # Checking Bearer token here
+    permission_classes = (IsSolutionProvider,)
+
+    def get(self, request):
+       
+        content = {'message': 'Access granted for Solution Provider'}
+        return Response(content, status=status.HTTP_200_OK)
+
+
+class SolutionSeekerView(APIView):
+
+    authentication_classes = [JWTAuthentication] # Checking Bearer token here
+    permission_classes = (IsSolutionSeeker,)
+
+    def get(self, request):
+    
+        content = {'message': 'Access granted for Solution Seeker'}
+        return Response(content, status=status.HTTP_200_OK)
