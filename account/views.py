@@ -60,6 +60,76 @@ class UserLoginAPIView(APIView):
         refresh_token = str(refresh)
 
         return Response({'access': access_token, 'refresh': refresh_token}, status=status.HTTP_200_OK)
+    
+
+# OTP based login APIVIEW
+from django.utils import timezone
+from .models import OTP
+import random
+
+class SendOTPView(APIView):
+
+    # This view sends an OTP to the user's email.
+    def post(self, request):
+        email = request.data.get('email')
+        if email:
+            user = User.objects.filter(email=email).first()
+            if user:
+                # Generate a 6-digit random number
+                otp = random.randint(100000, 999999) 
+                # Save OTP in database
+                otp_record, created = OTP.objects.get_or_create(user=user)
+                otp_record.otp = otp
+                otp_record.save()
+                # Send OTP through email
+                subject = 'Login OTP Code'
+                message = f'Your OTP for login is: {otp}'
+                from_email = 'patelmayank.oc@gmail.com' # Use sender email here
+                recipient_list = [user.email]
+                send_mail(subject, message, from_email, recipient_list)
+
+                return Response({"message": "OTP has been sent to your email."}, status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "User with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+class VerifyOTPView(APIView):
+
+    # This view verifies the OTP received by the user.
+    def post(self, request):
+        email = request.data.get('email')
+        otp_provided = request.data.get('otp')
+
+        if email and otp_provided:
+            user = User.objects.filter(email=email).first()
+            
+            if user:
+                otp_record = OTP.objects.filter(user=user).first()
+                
+                if otp_record:
+                    
+                    # Verify OTP
+                    time_elapsed = timezone.now() - otp_record.timestamp
+                    
+                    if time_elapsed.total_seconds() < 900 and otp_record.otp == otp_provided:  # 15 minutes expiration
+                        
+                        # Generate JWT token usig simple JWT package
+                        refresh = RefreshToken.for_user(user)
+                        access_token = str(refresh.access_token)
+                        refresh_token = str(refresh)
+                        return Response({'access': str(refresh.access_token),'refresh': str(refresh),}, status=status.HTTP_200_OK)
+                    else:
+                        return Response({"error": "Invalid or expired OTP."}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    return Response({"error": "OTP not sent for this user."}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({"error": "User with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response({"error": "Both email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 # Changing Password API view  
 class ChangePasswordAPIView(APIView):

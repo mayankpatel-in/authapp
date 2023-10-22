@@ -80,3 +80,10 @@ class UserProfile(models.Model):
     
     def __str__(self):
         return self.user.email
+    
+
+# Store random otp in this field (For validate the otp)
+class OTP(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    otp = models.CharField(max_length=6)  
+    timestamp = models.DateTimeField(auto_now=True)  # Checking OTP expire time here
